@@ -2,49 +2,77 @@
 #include <Servo.h>
 #include <cstdlib>
 #include <string.h>
+#include <MD_Parola.h>
+#include <MD_MAX72xx.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+
+#define HARDWARE_TYPE MD_MAX72XX::GENERIC_HW
+#define MAX_DEVICES 1
+#define CS_PIN D2
+
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+
+#define OLED_RESET    -1  // Reset pin not used with I2C
+#define SCREEN_ADDRESS 0x3C  // Common I2C address for SSD1306
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);
+
+unsigned long previousMillis = 0;
+unsigned long elapsedSeconds = 0;
+
+char timeStr[9];
+
+MD_Parola ledMatrix = MD_Parola(HARDWARE_TYPE, CS_PIN, MAX_DEVICES);
+
+const char* message = "1234";
+int currentCharIndex = 0;
+unsigned long lastUpdateI2C = 0;
+unsigned long lastUpdateSerial = 0;
+const unsigned long interval = 150;
 
 const int ANGLE_MAX = 180;
 const int ANGLE_MIN = 0;
 
-int red_LED_pin = D7;
-int green_LED_pin = D6;
+int red_LED_pin = D3;
+int green_LED_pin = D0;
 int button_pin = D8;
+int servo_pin = D4;
+
 Servo servo;
 int angle = 0;
 int analogValue;
 
 int angle_sequence[3];
 int angle_game_index = 0;
+int game_started = 0;
 
 void setup()
 {
+  Wire.begin(D1, D6);  // SDA = D1, SCL = D6 (adjust if needed)
+  display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);
+  display.clearDisplay();
+  display.setTextColor(SSD1306_WHITE);
+  display.setTextSize(2);
+  display.setCursor(10, 15);
+  display.print("Loading...");
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+  display.display();
+
+
+  ledMatrix.begin();         // initialize led matrix 
+  ledMatrix.setIntensity(10); // set the brightness of the LED matrix display (from 0 to 15)
+  ledMatrix.displayClear();  // clear led matrix display
+
   pinMode(red_LED_pin, OUTPUT);
   pinMode(green_LED_pin, OUTPUT);
   pinMode(button_pin, INPUT);
-  servo.attach(D4, (uint16_t) 1000, (uint16_t) 2000, 0);
-}
+  servo.attach(servo_pin, (uint16_t) 1000, (uint16_t) 2000, 0);
 
-void send_SOS(){
-  for (int i = 0; i < 3; i++){
-    digitalWrite(red_LED_pin, HIGH);
-    delay(200);
-    digitalWrite(red_LED_pin, LOW); 
-    delay(200); 
-  }
+  Serial.begin(9600);
 
-  digitalWrite(red_LED_pin, HIGH);
-  digitalWrite(green_LED_pin, HIGH);
-  delay(800);
-  digitalWrite(red_LED_pin, LOW);
-  digitalWrite(green_LED_pin, LOW); 
-  delay(200);  
-
-  for (int i = 0; i < 3; i++){
-    digitalWrite(red_LED_pin, HIGH);
-    delay(200);
-    digitalWrite(red_LED_pin, LOW); 
-    delay(200);
-  }
 }
 
 void servo_smooth_rotate(int initial_angle, int final_angle){
@@ -109,17 +137,27 @@ void blink_LED(int led_pin){
   digitalWrite(led_pin, HIGH);
   delay(800);
   digitalWrite(led_pin, LOW);   
+  delay(200);
 }
 
 void initiate_game(){
+  Serial.print("Initiating new game with values:");
+  Serial.print("\n");
   blink_LED(red_LED_pin);
   blink_LED(green_LED_pin);
   angle_game_index = 0;
   for (int i = 0; i < 3; i++){
     angle_sequence[i] = random_angle();
     servo.write(angle_sequence[i]);
+    Serial.print(angle_sequence[i]);
+    Serial.print("\n");
     delay(1000);
   }
+  game_started = 1;
+  Serial.print("####################");
+  Serial.print("\n");
+  blink_LED(green_LED_pin);
+  blink_LED(green_LED_pin);
   blink_LED(green_LED_pin);
 }
 
@@ -129,31 +167,80 @@ int read_potentiometer_value(){
 }
 
 void check_user_pattern(){
-  if (abs(read_potentiometer_value() - angle_sequence[angle_game_index]) <= 5){
+  if (abs(read_potentiometer_value() - angle_sequence[angle_game_index]) <= 10){
     angle_game_index++;
     blink_LED(green_LED_pin);
   } else{
     blink_LED(red_LED_pin);
+    Serial.print(read_potentiometer_value());
+    Serial.print("\n");
   }
 
-  if (angle_game_index == 3){
+  if (angle_game_index >= 3){
     digitalWrite(green_LED_pin, HIGH);
+    game_started = 0;
   }
 }
 
 void loop()
 {
+  Serial.print("####\nStart of new loop\n####\n");
   bool button_value = digitalRead(button_pin);
+
+  unsigned long currentMillis = millis();
+
+  // Count seconds manually
+  if (currentMillis - previousMillis >= 1000) {
+    previousMillis = currentMillis;
+    elapsedSeconds++;
+  }
+
+  // Convert to HH:MM:SS
+  int hours = (elapsedSeconds / 3600) % 24;
+  int minutes = (elapsedSeconds / 60) % 60;
+  int seconds = elapsedSeconds % 60;
+
+  (display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS))
+  if ((currentMillis - lastUpdateI2C >= 1000)) {
+    snprintf(timeStr, sizeof(timeStr), "%02d:%02d:%02d", hours, minutes, seconds);
+    Serial.print("Updating I2C display");
+    lastUpdateI2C = currentMillis;
+    // Display time
+    display.clearDisplay();
+    display.setCursor(10, 15);
+    display.print(timeStr);
+    display.display();
+  }
+
+
+  if (currentMillis - lastUpdateSerial >= interval) {
+    lastUpdateSerial = currentMillis;
+
+    // Show next character
+    char currentChar[2] = { message[currentCharIndex], '\0' };
+    ledMatrix.displayClear();
+    ledMatrix.setTextAlignment(PA_CENTER);
+    ledMatrix.print(currentChar);
+
+    // Advance index
+    currentCharIndex++;
+    if (currentCharIndex >= (int) strlen(message)) {
+      currentCharIndex = 0;
+    }
+  }
+    
+  // if (ledMatrix.displayAnimate()) {
+  //   ledMatrix.displayText("H", PA_CENTER, 100, 0, PA_PRINT, PA_NO_EFFECT);
+  // }
+
   if (button_value){
-    //send_SOS();
-    //servo_rotate();
     delay(1000);
     button_value = digitalRead(button_pin);
     if (button_value){
       // long press
       initiate_game();
     }
-    else{
+    else if (game_started){
       // short press
       check_user_pattern();
     }
@@ -162,5 +249,6 @@ void loop()
   else{
     servo.write(read_potentiometer_value());
   }
-  delay(150);
+  delay(1000);
+  Serial.print("$$$$\nEnd of the loop\n$$$$\n");
 }
