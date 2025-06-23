@@ -94,11 +94,14 @@ void blink_all_LEDs(){
 }
 
 void showInstructions() {
-  Serial.println("=== Welcome to Memory Game ===");
-  Serial.println("Commands:");
-  Serial.println("start [1-5]   → play a specific game");
-  Serial.println("reset          → return to main menu");
-  Serial.println("quit           → quit current game session");
+  if (debug){
+    Serial.println("=== Welcome to Memory Game ===");
+    Serial.println("Commands:");
+    Serial.println("start [1-5]   → play a specific game");
+    Serial.println("reset          → return to main menu");
+    Serial.println("quit           → quit current game session");
+    Serial.println("debug           → enable/disable debug mode");
+  }
 }
 
 void setup() {
@@ -122,6 +125,8 @@ void processCommand(const char* cmd) {
   if (strcmp(cmd, "reset") == 0 || strcmp(cmd, "quit") == 0) {
     gameActive = false;
     showInstructions();
+  } else if (strcmp(cmd, "debug") == 0) {
+    debug = !debug;
   } else if (strncmp(cmd, "start", 5) == 0 && cmd[5] == ' ') {
     int g = atoi(&cmd[6]);
     if (g >= 1 && g <= 5) {
@@ -130,8 +135,8 @@ void processCommand(const char* cmd) {
       level = 1;
       lives = 3;
       max_level = 1;
-      Serial.print("\nSelected Game ");
-      Serial.println(g);
+      if(debug)Serial.print("\nSelected Game ");
+      if(debug)Serial.println(g);
     } else {
       Serial.println("\nInvalid game number. Use 1-5.");
     }
@@ -202,7 +207,7 @@ int read_potentiometer_value(){
 
 // Game 1
 void game1() {
-  Serial.print("Initiating new game with values: ");
+  if (debug) Serial.print("Initiating new game with values: ");
   blink_LED(led_pins[0]);
   blink_LED(led_pins[1]);
   blink_LED(led_pins[0]);
@@ -217,11 +222,11 @@ void game1() {
     angle_sequence[i] = randomAngle();
     servo.write(angle_sequence[i]);
     blink_LED(led_pins[4]);
-    Serial.print(angle_sequence[i]);
-    Serial.print(" ");
+    if (debug) Serial.print(angle_sequence[i]);
+    if (debug) Serial.print(" ");
     delay(500);
   }
-  Serial.print("\n");
+  if (debug) Serial.print("\n");
 
   blink_LED(led_pins[1]);
   blink_LED(led_pins[1]);
@@ -243,6 +248,7 @@ void game1() {
           return;
         }
       } else {
+        Serial.print("true\n");
         angle_game_index++;
       }
     } else{    
@@ -411,7 +417,7 @@ void print_note_code(int note_code) {
 }
 
 void play_note_sequence(){
-  for (int i = 0; i < level + 3; i++) {
+  for (int i = 0; i < level; i++) {
     tone(buzzer_pin, note_freqs[note_sequence[i]]);
     delay(400);
     noTone(buzzer_pin);
@@ -421,7 +427,7 @@ void play_note_sequence(){
 
 // Game 4
 void game4() {
-  for (int i = 0; i < level + 3; i++) {
+  for (int i = 0; i < level; i++) {
     int n = rand() % 7;
     note_sequence[i] = n;
     print_note_code(n);
@@ -459,7 +465,7 @@ void game4() {
 
 // Game 5
 void game5() {
-  for (int i = 0; i < level + 3; i++) {
+  for (int i = 0; i < level; i++) {
     int n = rand() % 7;
     melody_sequence[i] = n;
     print_note_code(n);
