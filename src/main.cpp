@@ -127,6 +127,7 @@ void processCommand(const char* cmd) {
     showInstructions();
   } else if (strcmp(cmd, "debug") == 0) {
     debug = !debug;
+    if (debug) showInstructions();
   } else if (strncmp(cmd, "start", 5) == 0 && cmd[5] == ' ') {
     int g = atoi(&cmd[6]);
     if (g >= 1 && g <= 5) {
@@ -259,7 +260,7 @@ void game1() {
 
     if (SerialCounter == 99){
       readSerialCommand();
-      if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset") == 0) && new_command) {
+      if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset" ) == 0 || strcmp(userInput, "debug" ) == 0) && new_command) {
         processCommand(userInput);
         return;
       }
@@ -298,7 +299,7 @@ void game2() {
   while (lives){
     readSerialCommand();
     
-    if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset") == 0) && new_command) {
+    if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset" ) == 0 || strcmp(userInput, "debug" ) == 0) && new_command) {
       processCommand(userInput);
       return;
     }
@@ -367,7 +368,7 @@ void game3() {
   while (lives){
     readSerialCommand();
     
-    if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset") == 0) && new_command) {
+    if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset" ) == 0 || strcmp(userInput, "debug" ) == 0) && new_command) {
       processCommand(userInput);
       new_command = false;
       return;
@@ -441,7 +442,7 @@ void game4() {
   while (lives){
     readSerialCommand();
     
-    if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset") == 0)  && new_command) {
+    if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset" ) == 0 || strcmp(userInput, "debug" ) == 0) && new_command) {
       processCommand(userInput);
       return;
     }
@@ -479,7 +480,7 @@ void game5() {
   while (lives){
     readSerialCommand();
     
-    if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset") == 0) && new_command) {
+    if ((strcmp(userInput, "quit") == 0 || strcmp(userInput, "reset" ) == 0 || strcmp(userInput, "debug" ) == 0) && new_command) {
       processCommand(userInput);
       return;
     }
